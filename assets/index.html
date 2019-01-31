@@ -56,19 +56,26 @@
   <script type="text/javascript" src="jquery-1.11.1.js"></script>
   <script type="text/javascript" src="socket.io-1.3.7.js"></script>
   <script type="text/javascript" charset="utf-8">
-        var dec = new TextDecoder();
-
         $(document).ready(function() {
             namespace = '/kafka-tail';
             var socket = io()
 
+            var message_count = 0
             socket.on('new_message', function(msg) {
-              //n = new Date().getTime();
-	            //pretty_json = JSON.stringify(JSON.parse(msg), undefined, 2);
-              //msg_elt = $('<details><summary>' + summary + '</summary><pre>' + pretty_json + '</pre></details>').fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
+              message_count ++
               msg_elt = $('<summary><pre>' + msg + '</pre></summary>').fadeTo(100, 0.3, function() { $(this).fadeTo(500, 1.0); });
               $('#messages').prepend(msg_elt);
-              });
+              if (message_count > 10000) {
+                $('#messages').empty();
+		message_count = 0;
+              }
+            });
+
+            socket.on('reconnect_attempt', (attemptNumber) => {
+              console.log(attemptNumber);
+              $('#info').text('remote is closed, join again');
+              $('#messages').empty();
+            });
 
             $('form#join_room').submit(function(event) {
               topic = $('#join_kafka_room').val();
@@ -76,7 +83,8 @@
               $('#info').text('Reveiving messages from ' + topic);
               return false;
             });
-	    $('form#leave_room').submit(function(event) {
+
+            $('form#leave_room').submit(function(event) {
               socket.emit('leave', $('#leave_kafka_room').val());
               $('#info').text('');
               $('#messages').empty();
